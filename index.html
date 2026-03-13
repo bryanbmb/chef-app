@@ -639,7 +639,7 @@
 </div>
 
 <script>
-const GEMINI_KEY = 'AIzaSyAYrosdYqNWqWrDRfcSxeEv5sM30NKgVN0';
+const OPENAI_KEY = 'PASTE_YOUR_OPENAI_KEY_HERE';
 const EDAMAM_ID = '2edcc621';
 const EDAMAM_KEY = '7fbe5f273b915d8132236cdf5ce5d62b';
 
@@ -839,21 +839,26 @@ async function findRecipes() {
 async function identifyIngredients(text, b64, mime) {
   if (b64) {
     const body = {
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: mime, data: b64 } },
-          { text: currentLang === 'es'
+      model: 'gpt-4o-mini',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+          { type: 'text', text: currentLang === 'es'
             ? 'Identifica todos los ingredientes de comida visibles en esta imagen. Devuelve solo una lista simple separada por comas.'
             : 'Identify all food ingredients visible in this image. Return only a simple comma-separated list.' }
         ]
       }]
     };
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
-    const detected = data.candidates[0].content.parts[0].text;
+    const detected = data.choices[0].message.content;
     return text ? detected + ', ' + text : detected;
   }
   return text;
@@ -872,13 +877,15 @@ Suggest exactly 4 recipes I can make. For each recipe return a JSON with this EX
 {"recipes":[{"name":"name","emoji":"relevant emoji","description":"short appetizing description in 1-2 sentences","prepTime":15,"cookTime":25,"servings":2,"difficulty":"Easy","ingredients":[{"amount":"2","unit":"breasts","name":"chicken, boneless"}],"tools":["large pan","cutting board"],"steps":[{"action":"Detailed beginner instruction explaining how and why","tip":"optional useful tip","warning":"optional warning if applicable"}],"nutrition":{"calories":450,"protein":35,"carbs":40,"fat":12,"fiber":5},"storage":"How to store leftovers","substitutions":"What ingredients can be swapped"}]}
 Respond ONLY with the JSON, no extra text.`;
 
-  const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4000 } };
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
-    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+  const body = { model: 'gpt-4o-mini', max_tokens: 4000, temperature: 0.7, messages: [{ role: 'user', content: prompt }] };
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+    body: JSON.stringify(body)
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  let raw = data.candidates[0].content.parts[0].text.trim();
+  let raw = data.choices[0].message.content.trim();
   raw = raw.replace(/```json|```/g, '').trim();
   const parsed = JSON.parse(raw);
   return parsed.recipes;
