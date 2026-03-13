@@ -12,18 +12,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const OPENAI_KEY = process.env.OPENAI_KEY;
-    if (!OPENAI_KEY) {
-      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    const GROQ_KEY = process.env.GROQ_KEY;
+    if (!GROQ_KEY) {
+      return res.status(500).json({ error: 'Groq API key not configured' });
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const { messages, max_tokens, temperature } = req.body;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_KEY}`
+        'Authorization': `Bearer ${GROQ_KEY}`
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        max_tokens: max_tokens || 4000,
+        temperature: temperature || 0.7
+      })
     });
 
     const data = await response.json();
