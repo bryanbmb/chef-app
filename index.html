@@ -639,7 +639,7 @@
 </div>
 
 <script>
-const OPENAI_KEY = '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';
+const OPENAI_KEY = '';
 const EDAMAM_ID = '2edcc621';
 const EDAMAM_KEY = '7fbe5f273b915d8132236cdf5ce5d62b';
 
@@ -851,9 +851,9 @@ async function identifyIngredients(text, b64, mime) {
         ]
       }]
     };
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     const data = await res.json();
@@ -878,9 +878,9 @@ Suggest exactly 4 recipes I can make. For each recipe return a JSON with this EX
 Respond ONLY with the JSON, no extra text.`;
 
   const body = { model: 'gpt-4o-mini', max_tokens: 4000, temperature: 0.7, messages: [{ role: 'user', content: prompt }] };
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('/api/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   const data = await res.json();
