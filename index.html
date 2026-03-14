@@ -647,16 +647,34 @@ async function findRecipes() {
     const isES = currentLang === 'es';
 
     const prompt = isES
-      ? `Soy principiante en cocina. ${isLeftover ? 'Tengo SOBRAS de:' : 'Tengo estos ingredientes:'} ${ingredients}.
+      ? `Soy un principiante TOTAL en cocina, nunca he cocinado antes. ${isLeftover ? 'Tengo SOBRAS de:' : 'Tengo estos ingredientes:'} ${ingredients}.
 Tipo de comida: ${mealFilter}. Dificultad: ${diffFilter === 'auto' ? 'elige la dificultad más apropiada para cada receta' : diffFilter}. Tiempo: ${timeFilter}. Nutrición: ${nutritionFilter}.
 Solo uso estufa y horno (sin microondas ni airfryer).
-Sugiere exactamente 4 recetas. Responde SOLO con este JSON sin texto adicional:
-{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Fácil","mealType":"Desayuno","ingredients":[{"amount":"2","unit":"tazas","name":"arroz"}],"tools":["sartén"],"steps":[{"action":"instrucción detallada para principiante explicando cómo y por qué","tip":"consejo opcional","warning":"advertencia opcional","hasTimer":false,"timerMinutes":0}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"cómo guardar sobras","substitutions":"qué cambiar"}]}`
-      : `I am a cooking beginner. ${isLeftover ? 'I have LEFTOVERS of:' : 'I have these ingredients:'} ${ingredients}.
+Sugiere exactamente 4 recetas. CRÍTICO para los pasos: cada paso debe ser ULTRA detallado para alguien que nunca ha cocinado:
+- Explica EXACTAMENTE cómo hacer cada acción física ("coloca el pollo plano en la sartén, deberías escuchar un chisporroteo fuerte al contacto")
+- Da temperaturas exactas CON guías visuales ("fuego medio = el aceite empieza a brillar y ondularse pero NO humea")
+- Da tiempos exactos MÁS señales visuales/sonoras/olfativas ("cocina 6-8 minutos hasta que el fondo esté dorado como pan tostado y huela rico")
+- Explica POR QUÉ se hace cada paso ("sellamos el pollo primero para que quede jugoso por dentro y crujiente por fuera")
+- Advierte ANTES de cada peligro, no después ("ANTES de agregar el pollo: ten cuidado, el aceite puede salpicar")
+- NUNCA digas solo 'cocinar según instrucciones del paquete', siempre da los pasos reales
+- Usa tip para trucos de sabor extra, warning para errores comunes y seguridad
+- hasTimer:true y timerMinutes para pasos con tiempo de espera
+Responde SOLO con este JSON sin texto adicional:
+{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Fácil","mealType":"Desayuno","ingredients":[{"amount":"2","unit":"tazas","name":"arroz"}],"tools":["sartén grande"],"steps":[{"action":"paso ultra detallado explicando exactamente qué hacer, cómo hacerlo, por qué, y cómo saber que está listo","tip":"truco de sabor o técnica útil","warning":"advertencia de seguridad o error común a evitar","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"cómo guardar sobras y por cuánto tiempo","substitutions":"qué ingredientes se pueden cambiar y por qué"}]}`
+      : `I am a TOTAL cooking beginner, I have never cooked before. ${isLeftover ? 'I have LEFTOVERS of:' : 'I have these ingredients:'} ${ingredients}.
 Meal type: ${mealFilter}. Difficulty: ${diffFilter === 'auto' ? 'choose the most appropriate difficulty for each recipe' : diffFilter}. Time: ${timeFilter}. Nutrition: ${nutritionFilter}.
 I only use stovetop and oven (no microwave or air fryer).
-Suggest exactly 4 recipes. Respond ONLY with this JSON, no extra text:
-{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Easy","mealType":"Dinner","ingredients":[{"amount":"2","unit":"cups","name":"rice"}],"tools":["pan"],"steps":[{"action":"detailed beginner instruction explaining how and why","tip":"optional tip","warning":"optional warning","hasTimer":false,"timerMinutes":0}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"how to store leftovers","substitutions":"what to swap"}]}`;
+Suggest exactly 4 recipes. CRITICAL for the steps: each step must be ULTRA detailed for someone who has never cooked:
+- Explain EXACTLY how to do every physical action ("place the chicken flat in the pan, you should hear a loud sizzle on contact")
+- Give exact temperatures WITH visual guides ("medium heat = the oil starts to shimmer and ripple but does NOT smoke")
+- Give exact times PLUS visual/sound/smell cues ("cook 6-8 minutes until the bottom is golden brown like toast and smells delicious")
+- Explain WHY each step is done ("we sear the chicken first so it stays juicy inside and gets crispy outside")
+- Warn BEFORE each danger, not after ("BEFORE adding chicken: careful, the hot oil may splatter")
+- NEVER say just 'cook according to package instructions', always give the actual real steps
+- Use tip for extra flavor tricks, warning for common mistakes and safety
+- hasTimer:true and timerMinutes for steps with waiting time
+Respond ONLY with this JSON, no extra text:
+{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Easy","mealType":"Dinner","ingredients":[{"amount":"2","unit":"cups","name":"rice"}],"tools":["large pan"],"steps":[{"action":"ultra detailed step explaining exactly what to do, how to do it, why, and how to know when it is done","tip":"flavor trick or useful technique","warning":"safety warning or common mistake to avoid","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"how to store leftovers and for how long","substitutions":"what ingredients can be swapped and why"}]}`;
 
     const raw = await callAI([{ role: 'user', content: prompt }]);
     const clean = raw.replace(/```json|```/g, '').trim();
@@ -728,9 +746,15 @@ function showRecipeDetail(index) {
   const r = currentRecipes[index];
   const isFav = favorites.some(f => f.name === r.name);
   const content = document.getElementById('recipe-detail-content');
+  const imgQuery = encodeURIComponent(r.name + ' food dish');
   content.innerHTML = `
     <div class="recipe-detail-hero fade-up">
-      <span class="recipe-detail-emoji">${r.emoji}</span>
+      <div style="width:100%;height:200px;border-radius:14px;overflow:hidden;margin-bottom:14px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;position:relative">
+        <img src="https://source.unsplash.com/400x200/?${imgQuery}" 
+             alt="${r.name}" 
+             style="width:100%;height:100%;object-fit:cover;border-radius:14px"
+             onerror="this.parentElement.innerHTML='<span style=\'font-size:64px\'>${r.emoji}</span>'">
+      </div>
       <div class="recipe-detail-title">${r.name}</div>
       <div class="recipe-detail-desc">${r.description}</div>
       <div class="recipe-stats">
