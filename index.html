@@ -593,6 +593,25 @@ function addPantryItem() {
 }
 function removePantryItem(item) { pantry = pantry.filter(p => p !== item); savePantry(); renderPantry(); }
 function savePantry() { localStorage.setItem('chefPantry', JSON.stringify(pantry)); }
+function addIngToPantry(name, rowIndex) {
+  if (!pantry.includes(name)) { pantry.push(name); savePantry(); }
+  // Update badge in place without re-rendering everything
+  const badge = document.getElementById('ing-badge-' + rowIndex);
+  const row = document.getElementById('ing-row-' + rowIndex);
+  if (row) {
+    const textDiv = row.querySelector('.ingredient-text');
+    // Remove old badge and button
+    const spans = textDiv.querySelectorAll('span:not(.ingredient-amount):not(.ingredient-name), button');
+    spans.forEach(s => s.remove());
+    // Add yellow badge
+    const newBadge = document.createElement('span');
+    newBadge.style.cssText = 'font-size:10px;background:rgba(201,168,76,0.15);color:var(--gold);border-radius:6px;padding:2px 6px;margin-left:6px';
+    newBadge.textContent = '📦 in pantry';
+    textDiv.appendChild(newBadge);
+  }
+  // Also update pantry page if visible
+  renderPantry();
+}
 function usePantry() {
   if (!pantry.length) return;
   document.getElementById('ingredients-text').value = pantry.join(', ');
@@ -659,8 +678,9 @@ Sugiere exactamente 4 recetas. CRÍTICO para los pasos: cada paso debe ser ULTRA
 - NUNCA digas solo 'cocinar según instrucciones del paquete', siempre da los pasos reales
 - Usa tip para trucos de sabor extra, warning para errores comunes y seguridad
 - hasTimer:true y timerMinutes para pasos con tiempo de espera
+- CRÍTICO: Lista TODOS los ingredientes que necesita la receta. Marca cada uno con "userProvided":true si estaba en mi lista de ingredientes, "userProvided":false si es un ingrediente extra que necesito comprar
 Responde SOLO con este JSON sin texto adicional:
-{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Fácil","mealType":"Desayuno","ingredients":[{"amount":"2","unit":"tazas","name":"arroz"}],"tools":["sartén grande"],"steps":[{"action":"paso ultra detallado explicando exactamente qué hacer, cómo hacerlo, por qué, y cómo saber que está listo","tip":"truco de sabor o técnica útil","warning":"advertencia de seguridad o error común a evitar","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"cómo guardar sobras y por cuánto tiempo","substitutions":"qué ingredientes se pueden cambiar y por qué"}]}`
+{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Fácil","mealType":"Desayuno","ingredients":[{"amount":"2","unit":"tazas","name":"arroz","userProvided":true},{"amount":"1","unit":"cdta","name":"aceite de oliva","userProvided":false}],"tools":["sartén grande"],"steps":[{"action":"paso ultra detallado explicando exactamente qué hacer, cómo hacerlo, por qué, y cómo saber que está listo","tip":"truco de sabor o técnica útil","warning":"advertencia de seguridad o error común a evitar","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"cómo guardar sobras y por cuánto tiempo","substitutions":"qué ingredientes se pueden cambiar y por qué"}]}`
       : `I am a TOTAL cooking beginner, I have never cooked before. ${isLeftover ? 'I have LEFTOVERS of:' : 'I have these ingredients:'} ${ingredients}.
 Meal type: ${mealFilter}. Difficulty: ${diffFilter === 'auto' ? 'choose the most appropriate difficulty for each recipe' : diffFilter}. Time: ${timeFilter}. Nutrition: ${nutritionFilter}.
 I only use stovetop and oven (no microwave or air fryer).
@@ -673,8 +693,9 @@ Suggest exactly 4 recipes. CRITICAL for the steps: each step must be ULTRA detai
 - NEVER say just 'cook according to package instructions', always give the actual real steps
 - Use tip for extra flavor tricks, warning for common mistakes and safety
 - hasTimer:true and timerMinutes for steps with waiting time
+- CRITICAL: List ALL ingredients the recipe needs in the ingredients array. Mark each with "userProvided":true if it was in my ingredient list, "userProvided":false if it is an extra ingredient I need to buy
 Respond ONLY with this JSON, no extra text:
-{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Easy","mealType":"Dinner","ingredients":[{"amount":"2","unit":"cups","name":"rice"}],"tools":["large pan"],"steps":[{"action":"ultra detailed step explaining exactly what to do, how to do it, why, and how to know when it is done","tip":"flavor trick or useful technique","warning":"safety warning or common mistake to avoid","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"how to store leftovers and for how long","substitutions":"what ingredients can be swapped and why"}]}`;
+{"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Easy","mealType":"Dinner","ingredients":[{"amount":"2","unit":"cups","name":"rice","userProvided":true},{"amount":"1","unit":"tsp","name":"olive oil","userProvided":false}],"tools":["large pan"],"steps":[{"action":"ultra detailed step explaining exactly what to do, how to do it, why, and how to know when it is done","tip":"flavor trick or useful technique","warning":"safety warning or common mistake to avoid","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"how to store leftovers and for how long","substitutions":"what ingredients can be swapped and why"}]}`;
 
     const raw = await callAI([{ role: 'user', content: prompt }]);
     const clean = raw.replace(/```json|```/g, '').trim();
@@ -749,11 +770,12 @@ function showRecipeDetail(index) {
   const imgQuery = encodeURIComponent(r.name + ' food dish');
   content.innerHTML = `
     <div class="recipe-detail-hero fade-up">
-      <div style="width:100%;height:200px;border-radius:14px;overflow:hidden;margin-bottom:14px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;position:relative">
-        <img src="https://source.unsplash.com/400x200/?${imgQuery}" 
+      <div style="width:100%;height:200px;border-radius:14px;overflow:hidden;margin-bottom:14px;background:var(--dark-mid);display:flex;align-items:center;justify-content:center;position:relative;border:1px solid var(--border)">
+        <span style="font-size:80px;position:absolute">${r.emoji}</span>
+        <img src="https://foodish-api.com/api/" 
              alt="${r.name}" 
-             style="width:100%;height:100%;object-fit:cover;border-radius:14px"
-             onerror="this.parentElement.innerHTML='<span style=\'font-size:64px\'>${r.emoji}</span>'">
+             style="width:100%;height:100%;object-fit:cover;border-radius:14px;position:relative;z-index:1"
+             onerror="this.style.display='none'">
       </div>
       <div class="recipe-detail-title">${r.name}</div>
       <div class="recipe-detail-desc">${r.description}</div>
@@ -790,11 +812,22 @@ function showRecipeDetail(index) {
     </div>
     <div class="card fade-up">
       <h3>${t('ingredients')}</h3>
-      ${r.ingredients.map((ing, i) => `
-        <div class="ingredient-item">
+      ${r.ingredients.map((ing, i) => {
+        const inPantry = pantry.some(p => p.toLowerCase().includes(ing.name.toLowerCase()) || ing.name.toLowerCase().includes(p.toLowerCase()));
+        const badge = ing.userProvided
+          ? '<span style="font-size:10px;background:rgba(74,164,74,0.15);color:#6ac96a;border-radius:6px;padding:2px 6px;margin-left:6px">✓ you have it</span>'
+          : inPantry
+            ? '<span style="font-size:10px;background:rgba(201,168,76,0.15);color:var(--gold);border-radius:6px;padding:2px 6px;margin-left:6px">📦 in pantry</span>'
+            : \`<span style="font-size:10px;background:rgba(196,98,58,0.15);color:var(--terracotta-light);border-radius:6px;padding:2px 6px;margin-left:6px" id="ing-badge-\${i}">+ need to buy</span>
+               <button onclick="addIngToPantry('\${ing.name.replace(/'/g,'\\'')}', \${i})" style="font-size:10px;background:rgba(201,168,76,0.08);color:var(--gold);border:1px solid rgba(201,168,76,0.3);border-radius:6px;padding:2px 6px;margin-left:4px;cursor:pointer">+ Add to pantry</button>\`;
+        return \`<div class="ingredient-item" id="ing-row-\${i}">
           <div class="ingredient-check" onclick="this.classList.toggle('checked')"></div>
-          <div class="ingredient-text"><span class="ingredient-amount">${ing.amount} ${ing.unit}</span><span class="ingredient-name"> ${ing.name}</span></div>
-        </div>`).join('')}
+          <div class="ingredient-text" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
+            <span><span class="ingredient-amount">\${ing.amount} \${ing.unit}</span><span class="ingredient-name"> \${ing.name}</span></span>
+            \${badge}
+          </div>
+        </div>\`;
+      }).join('')}
     </div>
     <div class="card fade-up">
       <h3>${t('steps')}</h3>
