@@ -486,13 +486,79 @@ body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream);
   <div id="nutrition-week-summary"></div>
 </div>
 
+<!-- PAGE: SETTINGS -->
+<div class="page" id="page-settings">
+  <h2 class="sec-title" style="margin-bottom:4px">⚙️ Settings</h2>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Your preferences are saved automatically</p>
+
+  <div class="card">
+    <h3>🍽️ Default servings</h3>
+    <div class="slider-row">
+      <label style="font-size:12px;color:var(--text-muted)">Servings</label>
+      <input type="range" min="1" max="8" value="4" step="1" id="settings-servings" oninput="updateSettingsServings(this.value)">
+      <span class="slider-val" id="settings-servings-val">4</span>
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:8px">Each recipe will default to this many servings</p>
+  </div>
+
+  <div class="card">
+    <h3>🌐 Default language</h3>
+    <div class="chips-row">
+      <button class="chip" id="settings-lang-en" onclick="setSettingsLang('en')">🇺🇸 English</button>
+      <button class="chip" id="settings-lang-es" onclick="setSettingsLang('es')">🇵🇷 Spanish</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🥦 Default dietary preferences</h3>
+    <div class="chips-row">
+      <button class="chip" data-setting="dietary" data-val="vegetarian" onclick="toggleSettingChip(this)">🥦 Vegetarian</button>
+      <button class="chip" data-setting="dietary" data-val="gluten-free" onclick="toggleSettingChip(this)">🌾 Gluten-free</button>
+      <button class="chip" data-setting="dietary" data-val="dairy-free" onclick="toggleSettingChip(this)">🥛 Dairy-free</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>⏱️ Default cook time</h3>
+    <div class="chips-row">
+      <button class="chip" data-setting="time" data-val="15" onclick="toggleSettingChip(this)">⚡ Under 15 min</button>
+      <button class="chip" data-setting="time" data-val="30" onclick="toggleSettingChip(this)">⏱ Under 30 min</button>
+      <button class="chip" data-setting="time" data-val="60" onclick="toggleSettingChip(this)">🕐 Under 1 hr</button>
+      <button class="chip active" data-setting="time" data-val="any" onclick="toggleSettingChip(this)">✨ Any time</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🎯 Default nutrition goal</h3>
+    <div class="chips-row">
+      <button class="chip" data-setting="nutrition" data-val="high-protein" onclick="toggleSettingChip(this)">💪 High protein</button>
+      <button class="chip" data-setting="nutrition" data-val="low-cal" onclick="toggleSettingChip(this)">🥗 Low calorie</button>
+      <button class="chip" data-setting="nutrition" data-val="low-carb" onclick="toggleSettingChip(this)">🥩 Low carb</button>
+      <button class="chip" data-setting="nutrition" data-val="balanced" onclick="toggleSettingChip(this)">⚖️ Balanced</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🍽️ Default meal type</h3>
+    <div class="chips-row">
+      <button class="chip" data-setting="meal" data-val="breakfast" onclick="toggleSettingChip(this)">🌅 Breakfast</button>
+      <button class="chip" data-setting="meal" data-val="lunch" onclick="toggleSettingChip(this)">☀️ Lunch</button>
+      <button class="chip" data-setting="meal" data-val="dinner" onclick="toggleSettingChip(this)">🌙 Dinner</button>
+      <button class="chip" data-setting="meal" data-val="snack" onclick="toggleSettingChip(this)">🍎 Snack</button>
+    </div>
+  </div>
+
+  <button class="cook-btn" style="margin-top:0;background:linear-gradient(135deg,var(--olive),var(--olive-light))" onclick="saveSettings()">💾 Save Settings</button>
+  <div id="settings-saved" style="text-align:center;color:#6ac96a;font-size:13px;margin-top:10px;display:none">✅ Settings saved!</div>
+</div>
+
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <button class="nav-btn active" onclick="showPage('search')" id="nav-search"><span class="nav-icon">🔍</span>Search</button>
   <button class="nav-btn" onclick="showPage('favorites')" id="nav-favorites"><span class="nav-icon">❤️</span>Favorites</button>
   <button class="nav-btn" onclick="showPage('history')" id="nav-history"><span class="nav-icon">📖</span>History</button>
   <button class="nav-btn" onclick="showPage('pantry')" id="nav-pantry"><span class="nav-icon">📦</span>Pantry</button>
-  <button class="nav-btn" onclick="showPage('planner')" id="nav-planner"><span class="nav-icon">📅</span>Planner</button>
+  <button class="nav-btn" onclick="showPage('settings')" id="nav-settings"><span class="nav-icon">⚙️</span>Settings</button>
 </div>
 
 <script>
@@ -743,7 +809,7 @@ function renderRecipeList() {
       '<span class="badge badge-cal">🔥 ~' + r.nutrition.calories + ' kcal</span>' +
       (r.mealType ? '<span class="badge badge-type">' + r.mealType + '</span>' : '') +
       (r.cuisine ? '<span class="badge badge-cuisine">' + r.cuisine + '</span>' : '') +
-      (r.estimatedCost ? '<span class="badge" style="background:rgba(74,164,74,0.12);color:#6ac96a">💰 ' + r.estimatedCost + '</span>' : '') +
+      (r.estimatedCost ? '<span class="badge" style="background:rgba(74,164,74,0.12);color:#6ac96a">🛒 ' + r.estimatedCost + '</span>' : '') +
       allergenHtml +
       '</div></div><span style="color:var(--text-muted);font-size:18px;align-self:center">›</span></div>' +
       '<div class="card-actions">' +
@@ -804,8 +870,9 @@ async function showRecipeDetail(index) {
     '<div class="stats-grid">' +
     '<div class="stat-box"><span class="stat-val" id="prep-val">' + r.prepTime + '</span><span class="stat-lbl">Prep (min)</span></div>' +
     '<div class="stat-box"><span class="stat-val" id="cook-val">' + r.cookTime + '</span><span class="stat-lbl">Cook (min)</span></div>' +
-    '<div class="stat-box"><span class="stat-val">' + (r.estimatedCost || '—') + '</span><span class="stat-lbl">Est. cost</span></div>' +
+    '<div class="stat-box"><span class="stat-val" id="cost-per-serving">—</span><span class="stat-lbl">~Per serving</span></div>' +
     '</div>' +
+    (r.estimatedCost ? '<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:6px">🛒 Grocery run: <span id="grocery-run-cost" style="color:#6ac96a">' + r.estimatedCost + '</span> <span style="color:rgba(255,255,255,0.3)">~estimated</span></div>' : '') +
     '<div style="margin-top:10px;display:flex;align-items:center;gap:8px;justify-content:center">' +
     '<span style="font-size:12px;color:var(--text-muted)">Rate this recipe:</span>' +
     '<div class="rating-row" id="rating-row-' + index + '">' + starsHtml + '</div>' +
@@ -859,6 +926,7 @@ async function showRecipeDetail(index) {
 
   // Load food image async
   loadFoodImage(r.name, r.emoji, 'detail-img-' + index);
+  updateCostDisplay(r, currentServings);
   showSection('detail');
 }
 
@@ -878,8 +946,9 @@ function buildRecipeDetailShell(index, r, isFav, scaleFactor) {
     '<div class="stats-grid">' +
     '<div class="stat-box"><span class="stat-val" id="prep-val">' + r.prepTime + '</span><span class="stat-lbl">Prep (min)</span></div>' +
     '<div class="stat-box"><span class="stat-val" id="cook-val">' + r.cookTime + '</span><span class="stat-lbl">Cook (min)</span></div>' +
-    '<div class="stat-box"><span class="stat-val">' + (r.estimatedCost || '—') + '</span><span class="stat-lbl">Est. cost</span></div>' +
+    '<div class="stat-box"><span class="stat-val" id="cost-per-serving">—</span><span class="stat-lbl">~Per serving</span></div>' +
     '</div>' +
+    (r.estimatedCost ? '<div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:6px">🛒 Grocery run: <span id="grocery-run-cost" style="color:#6ac96a">' + r.estimatedCost + '</span> <span style="color:rgba(255,255,255,0.3)">~estimated</span></div>' : '') +
     '<div style="margin-top:10px;display:flex;align-items:center;gap:8px;justify-content:center">' +
     '<span style="font-size:12px;color:var(--text-muted)">Rate this recipe:</span>' +
     '<div class="rating-row" id="rating-row-' + index + '">' + starsHtml + '</div></div></div>' +
@@ -904,6 +973,7 @@ function buildRecipeDetailShell(index, r, isFav, scaleFactor) {
     '<p style="font-size:11px;color:rgba(201,168,76,0.5);margin-top:6px;font-style:italic">Crafting beginner-friendly steps just for you</p>' +
     '</div>';
   loadFoodImage(r.name, r.emoji, 'detail-img-' + index);
+  setTimeout(() => updateCostDisplay(r, currentServings), 100);
 }
 
 async function loadRecipeDetails(index) {
@@ -1005,6 +1075,7 @@ function updateServings(val, index) {
   currentServings = parseInt(val);
   document.getElementById('serving-val').textContent = val;
   document.getElementById('nutrition-serving-label').textContent = 'per ' + val + ' serving(s)';
+  updateCostDisplay(currentRecipes[index], currentServings);
   const r = currentRecipes[index];
   const factor = currentServings / baseServings;
   // Update nutrition
@@ -1139,7 +1210,7 @@ function renderFavorites() {
       '<div class="recipe-info"><div class="recipe-name">' + r.name + (rating ? ' ' + '⭐'.repeat(rating) : '') + '</div>' +
       '<div class="recipe-meta"><span class="badge badge-time">⏱ ' + (r.prepTime + r.cookTime) + ' min</span>' +
       '<span class="badge badge-cal">🔥 ' + r.nutrition.calories + ' kcal</span>' +
-      (r.estimatedCost ? '<span class="badge" style="background:rgba(74,164,74,0.12);color:#6ac96a">💰 ' + r.estimatedCost + '</span>' : '') +
+      (r.estimatedCost ? '<span class="badge" style="background:rgba(74,164,74,0.12);color:#6ac96a">🛒 ' + r.estimatedCost + '</span>' : '') +
       '</div></div><span style="color:var(--text-muted);font-size:18px;align-self:center">›</span></div>' +
       '<div class="card-actions">' +
       '<button class="card-action-btn" onclick="loadFav(' + i + ')">👨‍🍳 Cook</button>' +
@@ -1319,11 +1390,149 @@ function renderWeekNutrition(plan) {
     '</div></div>';
 }
 
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+let userSettings = JSON.parse(localStorage.getItem('chefSettings') || '{"servings":4,"lang":"en","dietary":[],"time":"any","nutrition":[],"meal":[]}');
+
+function loadSettings() {
+  // Apply servings
+  baseServings = userSettings.servings || 4;
+  currentServings = baseServings;
+  document.getElementById('settings-servings').value = userSettings.servings || 4;
+  document.getElementById('settings-servings-val').textContent = userSettings.servings || 4;
+  // Apply language
+  setLang(userSettings.lang || 'en');
+  // Highlight correct lang button in settings
+  document.getElementById('settings-lang-en').classList.toggle('active', (userSettings.lang || 'en') === 'en');
+  document.getElementById('settings-lang-es').classList.toggle('active', userSettings.lang === 'es');
+  // Apply dietary chips on search page
+  if (userSettings.dietary && userSettings.dietary.length) {
+    userSettings.dietary.forEach(val => {
+      const el = document.querySelector('[data-group="dietary"][data-val="' + val + '"]');
+      if (el) { el.classList.add('active'); chips.dietary.push(val); }
+      const sel = document.querySelector('[data-setting="dietary"][data-val="' + val + '"]');
+      if (sel) sel.classList.add('active');
+    });
+  }
+  // Apply time
+  if (userSettings.time && userSettings.time !== 'any') {
+    document.querySelectorAll('[data-group="time"]').forEach(c => c.classList.remove('active'));
+    const el = document.querySelector('[data-group="time"][data-val="' + userSettings.time + '"]');
+    if (el) { el.classList.add('active'); chips.time = [userSettings.time]; }
+    document.querySelectorAll('[data-setting="time"]').forEach(c => c.classList.remove('active'));
+    const sel = document.querySelector('[data-setting="time"][data-val="' + userSettings.time + '"]');
+    if (sel) sel.classList.add('active');
+  }
+  // Apply nutrition
+  if (userSettings.nutrition && userSettings.nutrition.length) {
+    userSettings.nutrition.forEach(val => {
+      const el = document.querySelector('[data-group="nutrition"][data-val="' + val + '"]');
+      if (el) { el.classList.add('active'); chips.nutrition.push(val); }
+      const sel = document.querySelector('[data-setting="nutrition"][data-val="' + val + '"]');
+      if (sel) sel.classList.add('active');
+    });
+  }
+  // Apply meal
+  if (userSettings.meal && userSettings.meal.length) {
+    userSettings.meal.forEach(val => {
+      const el = document.querySelector('[data-group="meal"][data-val="' + val + '"]');
+      if (el) { el.classList.add('active'); chips.meal.push(val); }
+      const sel = document.querySelector('[data-setting="meal"][data-val="' + val + '"]');
+      if (sel) sel.classList.add('active');
+    });
+  }
+}
+
+function updateSettingsServings(val) {
+  document.getElementById('settings-servings-val').textContent = val;
+  userSettings.servings = parseInt(val);
+}
+
+function setSettingsLang(lang) {
+  userSettings.lang = lang;
+  setLang(lang);
+  document.getElementById('settings-lang-en').classList.toggle('active', lang === 'en');
+  document.getElementById('settings-lang-es').classList.toggle('active', lang === 'es');
+}
+
+function toggleSettingChip(el) {
+  const setting = el.dataset.setting, val = el.dataset.val;
+  if (setting === 'time') {
+    document.querySelectorAll('[data-setting="time"]').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    userSettings.time = val;
+    // Sync search chips
+    document.querySelectorAll('[data-group="time"]').forEach(c => c.classList.remove('active'));
+    const searchEl = document.querySelector('[data-group="time"][data-val="' + val + '"]');
+    if (searchEl) searchEl.classList.add('active');
+    chips.time = [val];
+  } else {
+    el.classList.toggle('active');
+    if (!userSettings[setting]) userSettings[setting] = [];
+    if (userSettings[setting].includes(val)) {
+      userSettings[setting] = userSettings[setting].filter(v => v !== val);
+    } else {
+      userSettings[setting].push(val);
+    }
+    // Sync search chips
+    const searchEl = document.querySelector('[data-group="' + setting + '"][data-val="' + val + '"]');
+    if (searchEl) {
+      if (userSettings[setting].includes(val)) { searchEl.classList.add('active'); chips[setting].push(val); }
+      else { searchEl.classList.remove('active'); chips[setting] = chips[setting].filter(v => v !== val); }
+    }
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem('chefSettings', JSON.stringify(userSettings));
+  baseServings = userSettings.servings;
+  currentServings = userSettings.servings;
+  const savedEl = document.getElementById('settings-saved');
+  savedEl.style.display = 'block';
+  setTimeout(() => savedEl.style.display = 'none', 2000);
+}
+
+function calcCostPerServing(recipe, servings) {
+  if (!recipe.estimatedCost) return null;
+  // Parse cost range e.g "$8-12" or "$10"
+  const match = recipe.estimatedCost.match(/[\d.]+/g);
+  if (!match) return null;
+  const groceryCost = match.length > 1 ? (parseFloat(match[0]) + parseFloat(match[1])) / 2 : parseFloat(match[0]);
+  // Estimate ingredient usage ratio (assume recipe makes baseServings worth of food)
+  // Cost per serving = groceryCost * (servings/totalPackageServings)
+  // We estimate package servings as roughly 4x the recipe servings
+  const usageRatio = 0.6; // assume ~60% of purchased ingredients go into recipe
+  const totalRecipeCost = groceryCost * usageRatio;
+  const perServing = totalRecipeCost / (recipe.servings || 2);
+  return (perServing * servings).toFixed(2);
+}
+
+function updateCostDisplay(recipe, servings) {
+  const costEl = document.getElementById('cost-per-serving');
+  if (!costEl) return;
+  const perServing = calcCostPerServing(recipe, 1);
+  if (perServing) {
+    const totalCost = (parseFloat(perServing) * servings).toFixed(2);
+    costEl.textContent = '~$' + totalCost;
+    costEl.title = '~$' + perServing + ' per serving';
+  } else {
+    costEl.textContent = '—';
+  }
+  // Also update grocery run cost tooltip
+  const groceryEl = document.getElementById('grocery-run-cost');
+  if (groceryEl && recipe.estimatedCost) {
+    // Exclude pantry items from grocery cost
+    const pantryItems = recipe.ingredients.filter(i => getIngStatus(i) === 'pantry' || getIngStatus(i) === 'have');
+    const pantryNote = pantryItems.length > 0 ? ' (excl. ' + pantryItems.length + ' pantry items)' : '';
+    groceryEl.textContent = recipe.estimatedCost + pantryNote;
+  }
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 renderPantry();
 renderPlanner();
 document.getElementById('ingredients-text').placeholder = 'e.g: chicken, rice, broccoli...';
 document.getElementById('pantry-input').placeholder = 'Add ingredient...';
+loadSettings();
 </script>
 </body>
 </html>
