@@ -312,7 +312,7 @@ body { font-family:'DM Sans',sans-serif; background:var(--dark); color:var(--cre
 
       <div class="filter-label" id="lbl-difficulty">Difficulty</div>
       <div class="chips-row">
-        <button class="chip active" data-group="diff" data-val="easy" onclick="toggleChip(this)" id="chip-easy">🌱 Easy</button>
+        <button class="chip" data-group="diff" data-val="easy" onclick="toggleChip(this)" id="chip-easy">🌱 Easy</button>
         <button class="chip" data-group="diff" data-val="medium" onclick="toggleChip(this)" id="chip-medium">🔥 Medium</button>
         <button class="chip" data-group="diff" data-val="hard" onclick="toggleChip(this)" id="chip-hard">⚡ Advanced</button>
       </div>
@@ -442,7 +442,7 @@ let pantry = JSON.parse(localStorage.getItem('chefPantry') || '[]');
 let mealPlan = JSON.parse(localStorage.getItem('chefPlan') || 'null');
 let cookingSteps = [], cookingStepIndex = 0, cookingRecipeName = '';
 let timerInterval = null, timerSeconds = 0, timerRunning = false;
-let chips = { meal: [], diff: ['easy'], time: ['any'], nutrition: [], leftover: [] };
+let chips = { meal: [], diff: [], time: ['any'], nutrition: [], leftover: [] };
 
 // ─── TRANSLATIONS ─────────────────────────────────────────
 const T = {
@@ -555,10 +555,15 @@ function showSection(name) {
 // ─── CHIPS ────────────────────────────────────────────────
 function toggleChip(el) {
   const group = el.dataset.group, val = el.dataset.val;
-  if (group === 'diff' || group === 'time') {
+  if (group === 'time') {
     document.querySelectorAll(`[data-group="${group}"]`).forEach(c => c.classList.remove('active'));
     el.classList.add('active');
     chips[group] = [val];
+  } else if (group === 'diff') {
+    const wasActive = el.classList.contains('active');
+    document.querySelectorAll(`[data-group="diff"]`).forEach(c => c.classList.remove('active'));
+    if (!wasActive) { el.classList.add('active'); chips[group] = [val]; }
+    else { chips[group] = []; }
   } else {
     el.classList.toggle('active');
     if (chips[group].includes(val)) chips[group] = chips[group].filter(v => v !== val);
@@ -619,8 +624,7 @@ async function findRecipes() {
   const text = document.getElementById('ingredients-text').value.trim();
   if (!photoBase64 && !text) { showError(t('errorEmpty')); return; }
   document.getElementById('error-box').style.display = 'none';
-  showSection('loading-placeholder');
-  document.querySelector('#page-search .page-section.active')?.classList.remove('active');
+  document.querySelectorAll('#page-search .page-section').forEach(s => s.classList.remove('active'));
   document.getElementById('loading-state').style.display = 'block';
 
   try {
@@ -636,7 +640,7 @@ async function findRecipes() {
     }
 
     const mealFilter = chips.meal.length ? chips.meal.join('/') : 'any meal';
-    const diffFilter = chips.diff[0] || 'easy';
+    const diffFilter = chips.diff[0] || 'auto';
     const timeFilter = chips.time[0] !== 'any' ? `under ${chips.time[0]} minutes` : 'any time';
     const nutritionFilter = chips.nutrition.length ? chips.nutrition.join(', ') : 'balanced';
     const isLeftover = chips.leftover.includes('leftover');
@@ -644,12 +648,12 @@ async function findRecipes() {
 
     const prompt = isES
       ? `Soy principiante en cocina. ${isLeftover ? 'Tengo SOBRAS de:' : 'Tengo estos ingredientes:'} ${ingredients}.
-Tipo de comida: ${mealFilter}. Dificultad: ${diffFilter}. Tiempo: ${timeFilter}. Nutrición: ${nutritionFilter}.
+Tipo de comida: ${mealFilter}. Dificultad: ${diffFilter === 'auto' ? 'elige la dificultad más apropiada para cada receta' : diffFilter}. Tiempo: ${timeFilter}. Nutrición: ${nutritionFilter}.
 Solo uso estufa y horno (sin microondas ni airfryer).
 Sugiere exactamente 4 recetas. Responde SOLO con este JSON sin texto adicional:
 {"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Fácil","mealType":"Desayuno","ingredients":[{"amount":"2","unit":"tazas","name":"arroz"}],"tools":["sartén"],"steps":[{"action":"instrucción detallada para principiante explicando cómo y por qué","tip":"consejo opcional","warning":"advertencia opcional","hasTimer":false,"timerMinutes":0}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"cómo guardar sobras","substitutions":"qué cambiar"}]}`
       : `I am a cooking beginner. ${isLeftover ? 'I have LEFTOVERS of:' : 'I have these ingredients:'} ${ingredients}.
-Meal type: ${mealFilter}. Difficulty: ${diffFilter}. Time: ${timeFilter}. Nutrition: ${nutritionFilter}.
+Meal type: ${mealFilter}. Difficulty: ${diffFilter === 'auto' ? 'choose the most appropriate difficulty for each recipe' : diffFilter}. Time: ${timeFilter}. Nutrition: ${nutritionFilter}.
 I only use stovetop and oven (no microwave or air fryer).
 Suggest exactly 4 recipes. Respond ONLY with this JSON, no extra text:
 {"recipes":[{"name":"","emoji":"","description":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Easy","mealType":"Dinner","ingredients":[{"amount":"2","unit":"cups","name":"rice"}],"tools":["pan"],"steps":[{"action":"detailed beginner instruction explaining how and why","tip":"optional tip","warning":"optional warning","hasTimer":false,"timerMinutes":0}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"how to store leftovers","substitutions":"what to swap"}]}`;
