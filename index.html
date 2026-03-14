@@ -812,22 +812,7 @@ function showRecipeDetail(index) {
     </div>
     <div class="card fade-up">
       <h3>${t('ingredients')}</h3>
-      ${r.ingredients.map((ing, i) => {
-        const inPantry = pantry.some(p => p.toLowerCase().includes(ing.name.toLowerCase()) || ing.name.toLowerCase().includes(p.toLowerCase()));
-        const badge = ing.userProvided
-          ? '<span style="font-size:10px;background:rgba(74,164,74,0.15);color:#6ac96a;border-radius:6px;padding:2px 6px;margin-left:6px">✓ you have it</span>'
-          : inPantry
-            ? '<span style="font-size:10px;background:rgba(201,168,76,0.15);color:var(--gold);border-radius:6px;padding:2px 6px;margin-left:6px">📦 in pantry</span>'
-            : \`<span style="font-size:10px;background:rgba(196,98,58,0.15);color:var(--terracotta-light);border-radius:6px;padding:2px 6px;margin-left:6px" id="ing-badge-\${i}">+ need to buy</span>
-               <button onclick="addIngToPantry('\${ing.name.replace(/'/g,'\\'')}', \${i})" style="font-size:10px;background:rgba(201,168,76,0.08);color:var(--gold);border:1px solid rgba(201,168,76,0.3);border-radius:6px;padding:2px 6px;margin-left:4px;cursor:pointer">+ Add to pantry</button>\`;
-        return \`<div class="ingredient-item" id="ing-row-\${i}">
-          <div class="ingredient-check" onclick="this.classList.toggle('checked')"></div>
-          <div class="ingredient-text" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
-            <span><span class="ingredient-amount">\${ing.amount} \${ing.unit}</span><span class="ingredient-name"> \${ing.name}</span></span>
-            \${badge}
-          </div>
-        </div>\`;
-      }).join('')}
+      ${renderIngredientsList(r.ingredients)}
     </div>
     <div class="card fade-up">
       <h3>${t('steps')}</h3>
@@ -1070,6 +1055,61 @@ function renderPlanner() {
           <span style="color:var(--text-muted);font-size:11px;margin-left:auto">⏱ ${meal.minutes}${t('min')}</span>
         </div>`).join('')}
     </div>`).join('');
+}
+
+
+// ─── INGREDIENT RENDERING HELPERS ────────────────────────
+function getIngredientStatus(ing) {
+  if (ing.userProvided) return 'have';
+  const inPantry = pantry.some(p =>
+    p.toLowerCase().includes(ing.name.toLowerCase()) ||
+    ing.name.toLowerCase().includes(p.toLowerCase())
+  );
+  return inPantry ? 'pantry' : 'buy';
+}
+
+function renderIngredientsList(ingredients) {
+  return ingredients.map((ing, i) => {
+    const status = getIngredientStatus(ing);
+    let badge = '';
+    if (status === 'have') {
+      badge = '<span style="font-size:10px;background:rgba(74,164,74,0.15);color:#6ac96a;border-radius:6px;padding:2px 6px;margin-left:6px">✓ you have it</span>';
+    } else if (status === 'pantry') {
+      badge = '<span style="font-size:10px;background:rgba(201,168,76,0.15);color:#c9a84c;border-radius:6px;padding:2px 6px;margin-left:6px">📦 in pantry</span>';
+    } else {
+      const safeName = ing.name.replace(/'/g, "\\'");
+      badge = '<span id="ing-badge-' + i + '" style="font-size:10px;background:rgba(196,98,58,0.15);color:#e07a52;border-radius:6px;padding:2px 6px;margin-left:6px">+ need to buy</span>' +
+              '<button onclick="addIngToPantry(\'' + safeName + '\',' + i + ')" style="font-size:10px;background:rgba(201,168,76,0.08);color:#c9a84c;border:1px solid rgba(201,168,76,0.3);border-radius:6px;padding:2px 6px;margin-left:4px;cursor:pointer">+ pantry</button>';
+    }
+    return '<div class="ingredient-item" id="ing-row-' + i + '">' +
+      '<div class="ingredient-check" onclick="this.classList.toggle(\'checked\')"></div>' +
+      '<div class="ingredient-text" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">' +
+      '<span><span class="ingredient-amount">' + ing.amount + ' ' + ing.unit + '</span>' +
+      '<span class="ingredient-name"> ' + ing.name + '</span></span>' +
+      badge +
+      '</div></div>';
+  }).join('');
+}
+
+function renderGroceryList(ingredients) {
+  const legend = '<p style="font-size:11px;color:#8a8878;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap">' +
+    '<span style="background:rgba(74,164,74,0.12);color:#6ac96a;border-radius:6px;padding:2px 8px">✓ you have it</span>' +
+    '<span style="background:rgba(201,168,76,0.15);color:#c9a84c;border-radius:6px;padding:2px 8px">📦 in pantry</span>' +
+    '<span style="background:rgba(196,98,58,0.15);color:#e07a52;border-radius:6px;padding:2px 8px">+ need to buy</span>' +
+    '</p>';
+  const items = ingredients.map((ing, i) => {
+    const status = getIngredientStatus(ing);
+    const badge = status === 'have'
+      ? '<span style="font-size:10px;background:rgba(74,164,74,0.12);color:#6ac96a;border-radius:6px;padding:2px 6px;margin-left:4px">✓</span>'
+      : status === 'pantry'
+        ? '<span style="font-size:10px;background:rgba(201,168,76,0.15);color:#c9a84c;border-radius:6px;padding:2px 6px;margin-left:4px">📦</span>'
+        : '<span style="font-size:10px;background:rgba(196,98,58,0.15);color:#e07a52;border-radius:6px;padding:2px 6px;margin-left:4px">buy</span>';
+    return '<div class="grocery-item">' +
+      '<div class="grocery-check" id="gc-' + i + '" onclick="toggleGrocery(' + i + ')"></div>' +
+      '<span class="grocery-text" id="gt-' + i + '">' + ing.amount + ' ' + ing.unit + ' ' + ing.name + badge + '</span>' +
+      '</div>';
+  }).join('');
+  return legend + items;
 }
 
 // ─── INIT ─────────────────────────────────────────────────
