@@ -638,7 +638,7 @@ function scaleAmount(amount, factor) {
 async function callAI(messages, max_tokens) {
   const res = await fetch('/api/chat', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ messages, max_tokens: max_tokens || 4000, temperature: 0.7 })
+    body: JSON.stringify({ messages, max_tokens: max_tokens || 8000, temperature: 0.7 })
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
@@ -672,7 +672,7 @@ async function findRecipes() {
     const prompt = isES ?
       `Soy un principiante TOTAL en cocina, nunca he cocinado. ${isLeftover ? 'Tengo SOBRAS de:' : 'Ingredientes:'} ${ingredients}.
 Tipo: ${mealF}. Cocina: ${cuisineF}. Dietético: ${dietaryF}. Dificultad: ${diffF === 'auto' ? 'la más apropiada' : diffF}. Tiempo: ${timeF}. Nutrición: ${nutritionF}.
-Solo estufa y horno. Sugiere 4 recetas. REGLAS CRÍTICAS para los pasos:
+Solo estufa y horno. Sugiere 3 recetas (no 4). REGLAS CRÍTICAS para los pasos:
 1. Cada paso debe ser ULTRA detallado - explica exactamente cómo hacer cada acción física
 2. Incluye temperatura exacta con guía visual ("fuego medio = aceite brilla pero no humea")
 3. Incluye tiempo exacto + señales visuales/olfativas/sonoras de cuándo está listo
@@ -687,7 +687,7 @@ Responde SOLO con este JSON:
       :
       `I am a TOTAL cooking beginner, I have never cooked before. ${isLeftover ? 'I have LEFTOVERS of:' : 'Ingredients:'} ${ingredients}.
 Meal: ${mealF}. Cuisine: ${cuisineF}. Dietary: ${dietaryF}. Difficulty: ${diffF === 'auto' ? 'most appropriate' : diffF}. Time: ${timeF}. Nutrition: ${nutritionF}.
-Stovetop and oven only. Suggest 4 recipes. CRITICAL RULES for steps:
+Stovetop and oven only. Suggest 3 recipes (not 4). CRITICAL RULES for steps:
 1. Each step must be ULTRA detailed - explain exactly how to do every physical action
 2. Include exact temperature with visual guide ("medium heat = oil shimmers but does not smoke")
 3. Include exact time + visual/smell/sound cues for when it is done
@@ -695,12 +695,13 @@ Stovetop and oven only. Suggest 4 recipes. CRITICAL RULES for steps:
 5. Warn about dangers BEFORE they happen, not after
 6. NEVER just say "cook according to package instructions" - always give real steps
 7. Include hygiene steps (handwashing, surface sanitizing, safe internal temperatures)
+8. Keep steps to maximum 8 per recipe — be detailed but concise
 8. List ALL ingredients with userProvided:true if I have them, false if extra needed
 9. Include common allergens in allergens[], estimated Market Basket cost in estimatedCost
 Respond ONLY with this JSON:
 {"recipes":[{"name":"","emoji":"","description":"","cuisine":"","prepTime":10,"cookTime":20,"servings":2,"difficulty":"Easy","mealType":"","allergens":["gluten","dairy"],"estimatedCost":"$8-12","ingredients":[{"amount":"2","unit":"cups","name":"rice","userProvided":true}],"tools":["large pan"],"hygieneSteps":["Wash hands with soap and water for 20 seconds before touching any food","Sanitize cutting board and counter with hot soapy water","Ensure chicken is fully thawed before cooking — never cook from frozen"],"safeTemps":[{"food":"Chicken","temp":"165°F (74°C)"}],"steps":[{"action":"ultra detailed beginner step","tip":"flavor tip","warning":"safety warning","hasTimer":true,"timerMinutes":5}],"nutrition":{"calories":400,"protein":30,"carbs":35,"fat":10,"fiber":4},"storage":"how to store","substitutions":"what to swap"}]}`;
 
-    const raw = await callAI([{ role: 'user', content: prompt }]);
+    const raw = await callAI([{ role: 'user', content: prompt }], 8000);
     const clean = raw.replace(/```json|```/g, '').trim();
     currentRecipes = JSON.parse(clean).recipes;
     history = [...currentRecipes.map(r => ({...r, searchedAt: Date.now()})), ...history.filter(h => !currentRecipes.find(r => r.name === h.name))].slice(0, 20);
@@ -756,13 +757,21 @@ function renderRecipeList() {
 }
 
 // ─── RECIPE DETAIL ────────────────────────────────────────────────────────────
-function showRecipeDetail(index) {
+async function showRecipeDetail(index) {
   currentRecipeIndex = index;
   const r = currentRecipes[index];
   baseServings = r.servings || 2;
   currentServings = baseServings;
   const isFav = favorites.some(f => f.name === r.name);
   const scaleFactor = currentServings / baseServings;
+
+  // CALL 2: Load detailed instructions if not yet loaded
+  if (!r._detailsLoaded) {
+    buildRecipeDetailShell(index, r, isFav, scaleFactor);
+    showSection('detail');
+    await loadRecipeDetails(index);
+    return;
+  }
 
   const allergenHtml = r.allergens && r.allergens.length ?
     '<div style="background:rgba(230,150,50,0.1);border:1px solid rgba(230,150,50,0.3);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#e69632">⚠️ <strong>Allergens:</strong> ' + r.allergens.join(', ') + '</div>' : '';
@@ -851,6 +860,130 @@ function showRecipeDetail(index) {
   // Load food image async
   loadFoodImage(r.name, r.emoji, 'detail-img-' + index);
   showSection('detail');
+}
+
+function buildRecipeDetailShell(index, r, isFav, scaleFactor) {
+  const content = document.getElementById('recipe-detail-content');
+  const allergenHtml = r.allergens && r.allergens.length ?
+    '<div style="background:rgba(230,150,50,0.1);border:1px solid rgba(230,150,50,0.3);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#e69632">⚠️ <strong>Allergens:</strong> ' + r.allergens.join(', ') + '</div>' : '';
+  const rating = ratings[r.name] || 0;
+  const starsHtml = [1,2,3,4,5].map(n =>
+    '<button class="star-btn" onclick="rateRecipe(\'' + r.name.replace(/'/g,"\\'") + '\',' + n + ',this.parentElement)">' + (n <= rating ? '⭐' : '☆') + '</button>'
+  ).join('');
+  content.innerHTML =
+    '<div style="background:var(--dark-mid);border:1px solid rgba(201,168,76,0.2);border-radius:20px;padding:20px;margin-bottom:14px">' +
+    '<div class="detail-image" id="detail-img-' + index + '"><span class="detail-image-emoji">' + r.emoji + '</span></div>' +
+    '<div class="detail-title">' + r.name + '</div>' +
+    '<div class="detail-desc">' + r.description + '</div>' +
+    '<div class="stats-grid">' +
+    '<div class="stat-box"><span class="stat-val" id="prep-val">' + r.prepTime + '</span><span class="stat-lbl">Prep (min)</span></div>' +
+    '<div class="stat-box"><span class="stat-val" id="cook-val">' + r.cookTime + '</span><span class="stat-lbl">Cook (min)</span></div>' +
+    '<div class="stat-box"><span class="stat-val">' + (r.estimatedCost || '—') + '</span><span class="stat-lbl">Est. cost</span></div>' +
+    '</div>' +
+    '<div style="margin-top:10px;display:flex;align-items:center;gap:8px;justify-content:center">' +
+    '<span style="font-size:12px;color:var(--text-muted)">Rate this recipe:</span>' +
+    '<div class="rating-row" id="rating-row-' + index + '">' + starsHtml + '</div></div></div>' +
+    allergenHtml +
+    '<div class="serving-slider"><h4>👥 Servings</h4>' +
+    '<div class="slider-row"><label style="font-size:12px;color:var(--text-muted)">Servings</label>' +
+    '<input type="range" min="1" max="8" value="' + currentServings + '" step="1" oninput="updateServings(this.value,' + index + ')">' +
+    '<span class="slider-val" id="serving-val">' + currentServings + '</span></div></div>' +
+    '<div class="detail-actions">' +
+    '<button class="detail-action-btn primary" onclick="startCooking(' + index + ')">👨‍🍳 Cook mode</button>' +
+    '<button class="detail-action-btn" onclick="showGrocery(' + index + ')">🛒 Grocery</button>' +
+    '<button class="detail-action-btn" onclick="openShare(' + index + ')">📤 Share</button>' +
+    '<button class="detail-action-btn ' + (isFav ? 'fav-active' : '') + '" id="detail-fav-btn" onclick="toggleFavorite(' + index + ',this)">' + (isFav ? '❤️' : '🤍') + '</button>' +
+    '</div>' +
+    '<div class="card"><h3>🥗 Nutrition <span style="font-size:10px;color:var(--text-muted);font-family:\'DM Sans\',sans-serif;font-weight:400" id="nutrition-serving-label">per ' + currentServings + ' serving(s)</span></h3>' +
+    '<div class="nutrition-grid" id="nutrition-grid">' + renderNutrition(r.nutrition, scaleFactor) + '</div></div>' +
+    '<div class="card"><h3>🍳 Tools needed</h3><div class="tools-list">' + r.tools.map(t => '<div class="tool-chip">🍳 ' + t + '</div>').join('') + '</div></div>' +
+    '<div class="card"><h3>🛒 Ingredients</h3><div id="ingredients-list">' + renderIngredients(r.ingredients, scaleFactor) + '</div></div>' +
+    '<div id="details-loading" style="text-align:center;padding:32px;color:var(--text-muted)">' +
+    '<div class="spinner" style="margin:0 auto 12px"></div>' +
+    '<p style="font-size:13px">Loading detailed cooking instructions...</p>' +
+    '<p style="font-size:11px;color:rgba(201,168,76,0.5);margin-top:6px;font-style:italic">Crafting beginner-friendly steps just for you</p>' +
+    '</div>';
+  loadFoodImage(r.name, r.emoji, 'detail-img-' + index);
+}
+
+async function loadRecipeDetails(index) {
+  const r = currentRecipes[index];
+  const { isES, mealF, cuisineF, diffF, timeF } = window._lastFilters || { isES: currentLang === 'es' };
+  const ingredients = window._lastIngredients || r.ingredients.map(i => i.name).join(', ');
+  const ingList = r.ingredients.map(i => i.amount + ' ' + i.unit + ' ' + i.name).join(', ');
+
+  const prompt = isES ?
+    `Soy un principiante TOTAL en cocina, nunca he cocinado. Estoy haciendo: "${r.name}".
+Ingredientes que uso: ${ingList}.
+Genera instrucciones de cocina ULTRA detalladas para esta receta específica. REGLAS:
+1. Cada paso debe ser ULTRA detallado - explica exactamente cómo hacer cada acción física
+2. Temperatura exacta con guía visual ("fuego medio = aceite brilla pero no humea")
+3. Tiempo exacto + señales visuales/olfativas/sonoras ("6-8 min hasta que esté dorado como pan tostado")
+4. Explica POR QUÉ se hace cada paso ("sellamos primero para retener los jugos")
+5. Advierte de peligros ANTES de que ocurran
+6. NUNCA digas "según instrucciones del paquete" - siempre los pasos reales
+7. Incluye pasos de higiene específicos para esta receta
+8. Incluye temperaturas internas seguras si aplica
+Responde SOLO con este JSON:
+{"hygieneSteps":["paso de higiene detallado"],"safeTemps":[{"food":"Pollo","temp":"165°F (74°C)"}],"steps":[{"action":"paso ultra detallado explicando exactamente qué hacer, cómo, por qué, y cómo saber que está listo","tip":"truco útil","warning":"advertencia de seguridad","hasTimer":true,"timerMinutes":5}],"storage":"cómo guardar las sobras y por cuánto tiempo","substitutions":"qué ingredientes se pueden cambiar y por qué"}`
+    :
+    `I am a TOTAL cooking beginner, I have never cooked before. I am making: "${r.name}".
+Ingredients I am using: ${ingList}.
+Generate ULTRA detailed cooking instructions for this specific recipe. RULES:
+1. Each step must be ULTRA detailed - explain exactly how to do every physical action
+2. Exact temperature with visual guide ("medium heat = oil shimmers but does not smoke")
+3. Exact time + visual/smell/sound cues ("6-8 min until golden brown like toast and smells delicious")
+4. Explain WHY each step is done ("we sear first to lock in the juices")
+5. Warn about dangers BEFORE they happen, not after
+6. NEVER say "cook according to package instructions" - always give the real steps
+7. Include hygiene steps specific to this recipe
+8. Include safe internal temperatures where relevant
+9. You can use as many steps as needed — do not limit yourself, be thorough
+Respond ONLY with this JSON:
+{"hygieneSteps":["detailed hygiene step specific to this recipe"],"safeTemps":[{"food":"Chicken","temp":"165°F (74°C)"}],"steps":[{"action":"ultra detailed step explaining exactly what to do, how to do it, why, and how to know when done","tip":"useful flavor or technique tip","warning":"safety warning or common mistake","hasTimer":true,"timerMinutes":5}],"storage":"how to store leftovers and for how long","substitutions":"what ingredients can be swapped and why"}`;
+
+  try {
+    const raw = await callAI([{ role: 'user', content: prompt }], 8000);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const details = JSON.parse(clean);
+    // Merge details into recipe
+    currentRecipes[index] = { ...r, ...details, _detailsLoaded: true };
+    // Re-render detail section with full content
+    const updRec = currentRecipes[index];
+    const isFav = favorites.some(f => f.name === updRec.name);
+    const scaleFactor = currentServings / baseServings;
+    const hygieneHtml = updRec.hygieneSteps && updRec.hygieneSteps.length ?
+      '<div class="hygiene-card"><h3>🧼 Before you start — hygiene & safety</h3>' +
+      updRec.hygieneSteps.map(s => '<div class="hygiene-step"><span class="hygiene-icon">✅</span><span>' + s + '</span></div>').join('') +
+      '</div>' : '';
+    const tempHtml = updRec.safeTemps && updRec.safeTemps.length ?
+      '<div class="temp-guide"><h4>🌡️ Safe internal temperatures</h4>' +
+      updRec.safeTemps.map(t => '<div class="temp-row"><span class="temp-food">' + t.food + '</span><span class="temp-val">' + t.temp + '</span></div>').join('') +
+      '</div>' : '';
+    const stepsHtml = updRec.steps.map((step, i) =>
+      '<div class="step-item"><div class="step-num" onclick="this.classList.toggle(\'done\')">' + (i+1) + '</div>' +
+      '<div class="step-content"><div class="step-action">' + step.action + '</div>' +
+      (step.tip ? '<div class="step-tip">💡 ' + step.tip + '</div>' : '') +
+      (step.warning ? '<div class="step-warn">⚠️ ' + step.warning + '</div>' : '') +
+      '</div></div>'
+    ).join('');
+    const loadingEl = document.getElementById('details-loading');
+    if (loadingEl) {
+      loadingEl.outerHTML =
+        hygieneHtml + tempHtml +
+        '<div class="card"><h3>👨‍🍳 Cooking steps</h3>' + stepsHtml + '</div>' +
+        '<div class="card"><h3>📦 Storage & substitutions</h3>' +
+        '<div class="tip-row"><span>📦</span><span>' + (updRec.storage || '') + '</span></div>' +
+        '<div class="tip-row"><span>🔄</span><span>' + (updRec.substitutions || '') + '</span></div></div>' +
+        '<div class="sub-box"><h4>🔄 Ingredient substitution helper</h4>' +
+        '<div class="sub-input-row"><input class="sub-input" id="sub-input" placeholder="e.g. I don\'t have butter...">' +
+        '<button class="sub-btn" onclick="askSubstitution()">Ask AI</button></div>' +
+        '<div class="sub-result" id="sub-result"></div></div>';
+    }
+  } catch(err) {
+    const loadingEl = document.getElementById('details-loading');
+    if (loadingEl) loadingEl.innerHTML = '<p style="color:var(--terra-light);font-size:13px;padding:16px;text-align:center">Could not load instructions. <button onclick="loadRecipeDetails(' + index + ')" style="color:var(--gold);background:none;border:none;cursor:pointer;font-size:13px;text-decoration:underline">Try again</button></p>';
+  }
 }
 
 function renderNutrition(n, factor) {
